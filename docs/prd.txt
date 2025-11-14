@@ -1,0 +1,792 @@
+# Product Requirements Document (PRD): Utility Meter Reading with OCR
+
+## Overview
+
+**Product Name:** Utility Meter Reading with OCR
+
+**Problem Statement:** Apartment owners who rent out their properties face the challenge of accurately tracking utility meter readings (gas, water, electricity) to calculate costs for tenants. Manual reading and calculation processes are time-consuming, error-prone, and require physical access to meters.
+
+**Solution:** A mobile application that uses OCR (Optical Character Recognition) technology to automatically capture and recognize digits from utility meter photos, calculate consumption differences, and compute costs based on predefined tariffs.
+
+**Target Users:** Apartment owners who rent out their properties and need to track utility consumption and calculate billing.
+
+**Value Proposition:** 
+- Eliminates manual data entry errors
+- Speeds up the meter reading process
+- Provides immediate cost calculations
+- Lays foundation for future automation of utility billing workflows
+
+**Assumptions:**
+- Users have access to meters and can take photos with their mobile devices
+- Meters display digits in a readable format (not severely damaged or obscured)
+- Photos are taken under reasonable lighting conditions (MVP scope)
+- Users have basic familiarity with mobile applications
+
+***
+
+## Core Features
+
+### 1. Photo Capture
+**What it does:** Allows users to take photos of gas, water, and electricity meters directly within the mobile app using the device camera.
+
+**Why it's important:** This is the primary input mechanism for the application. Without reliable photo capture, the entire OCR workflow cannot function.
+
+**How it works:** 
+- Flutter app provides camera interface with preview
+- User positions meter in frame and captures photo
+- Photo is stored temporarily before upload
+
+### 2. Image Upload to Backend
+**What it does:** Transmits captured photos from the mobile app to the Python backend server via REST API.
+
+**Why it's important:** OCR processing requires server-side resources and libraries (OpenCV, Tesseract) that are not practical to run on mobile devices.
+
+**How it works:**
+- Flutter app sends HTTP POST request with image file
+- Backend receives and stores image temporarily for processing
+- Returns acknowledgment or error status
+
+### 3. Image Preprocessing
+**What it does:** Uses OpenCV to enhance image quality before OCR processing (e.g., grayscale conversion, noise reduction, contrast adjustment, rotation correction).
+
+**Why it's important:** Preprocessing significantly improves OCR accuracy by standardizing image conditions and highlighting digit regions.
+
+**How it works:**
+- Backend receives image
+- Applies OpenCV transformations to optimize for digit recognition
+- Prepares processed image for OCR engine
+
+### 4. Digit Recognition (OCR)
+**What it does:** Uses Tesseract OCR configured to recognize digits only (0-9) to extract meter readings from preprocessed images.
+
+**Why it's important:** This is the core value proposition - automatically extracting numeric values without manual entry.
+
+**How it works:**
+- Tesseract OCR engine processes preprocessed image
+- Configured with digit whitelist to improve accuracy
+- Returns recognized digit string
+- Confidence scores may be used for validation
+
+### 5. Consumption Calculation
+**What it does:** Calculates the difference between current reading and previous reading to determine consumption amount.
+
+**Why it's important:** Users need to know how much was consumed, not just the current meter value.
+
+**How it works:**
+- Retrieves previous reading from storage (server-side or client-side)
+- Subtracts previous from current reading
+- Handles edge cases (meter reset, negative values)
+
+### 6. Cost Calculation
+**What it does:** Multiplies consumption by predefined tariffs to calculate total cost for each utility type.
+
+**Why it's important:** Users need the final billing amount, not just consumption numbers.
+
+**How it works:**
+- Uses tariff rates (configurable per utility type)
+- Applies formula: cost = consumption × tariff
+- Supports different tariffs for different utility types
+
+### 7. Results Display
+**What it does:** Shows recognized meter reading, consumption, and calculated cost in the Flutter app interface.
+
+**Why it's important:** Users need immediate feedback to verify recognition accuracy and see calculated results.
+
+**How it works:**
+- Backend returns JSON with recognized values and calculations
+- Flutter app displays results in user-friendly format
+- Shows original photo alongside results for verification
+
+### 8. Photo Retake Functionality
+**What it does:** Allows users to discard current result and capture a new photo if recognition fails or is inaccurate.
+
+**Why it's important:** OCR is not 100% accurate; users need the ability to correct errors without restarting the entire process.
+
+**How it works:**
+- User reviews displayed results
+- If incorrect, user taps "Retake" button
+- Returns to camera interface for new capture
+- Previous attempt is discarded
+
+***
+
+## User Experience
+
+### User Personas
+
+**Primary Persona: Apartment Owner (Landlord)**
+- **Demographics:** 30-60 years old, owns one or more rental properties
+- **Technical Proficiency:** Moderate - comfortable with smartphones and basic apps
+- **Goals:** 
+  - Quickly and accurately track utility consumption
+  - Calculate tenant billing efficiently
+  - Reduce manual errors in meter reading
+- **Pain Points:**
+  - Time-consuming manual meter reading process
+  - Risk of transcription errors
+  - Difficulty accessing meters in tenant-occupied units
+- **Device:** Mobile phone (Android or iOS)
+
+### Key User Flows
+
+#### Flow 1: Capture and Process Meter Reading
+1. User opens app
+2. Selects utility type (gas/water/electricity)
+3. App opens camera interface
+4. User positions meter in frame
+5. User captures photo
+6. Photo uploads to backend (loading indicator shown)
+7. Backend processes image (3-5 seconds)
+8. Results display: recognized reading, consumption, cost
+9. User reviews results
+10. If correct: User confirms and saves
+11. If incorrect: User taps "Retake" and returns to step 3
+
+#### Flow 2: View Previous Reading
+1. User opens app
+2. Navigates to meter reading history (if available in MVP)
+3. Views list of previous readings
+4. Can see consumption trends (future enhancement)
+
+### UI/UX Considerations
+
+**Design Principles:**
+- **Simplicity:** Minimal steps to complete core task
+- **Clarity:** Large, readable numbers for recognized values
+- **Feedback:** Clear loading states and error messages
+- **Forgiveness:** Easy retake functionality
+
+**Key Screens:**
+1. **Home Screen:** Quick access to capture meter reading for each utility type
+2. **Camera Screen:** Full-screen camera preview with capture button and utility type indicator
+3. **Results Screen:** 
+   - Original photo thumbnail
+   - Recognized reading (large, prominent)
+   - Consumption amount
+   - Calculated cost
+   - "Confirm" and "Retake" buttons
+4. **Loading Screen:** Progress indicator during image processing
+
+**Accessibility:**
+- Large touch targets for buttons
+- High contrast text for readability
+- Clear visual feedback for all actions
+
+**Error Handling:**
+- Clear error messages if photo upload fails
+- Guidance if OCR confidence is low
+- Instructions for better photo quality if recognition fails
+
+***
+
+## Technical Architecture
+
+### System Components
+
+**1. Mobile Client (Flutter)**
+- **Technology:** Flutter framework for cross-platform development
+- **Platforms:** Android and iOS
+- **Responsibilities:**
+  - Camera interface and photo capture
+  - Image upload to backend API
+  - Results display and user interaction
+  - Local storage of previous readings (optional for MVP)
+  - UI/UX rendering
+
+**2. Backend Server (Python)**
+- **Technology:** Python with Flask or FastAPI framework
+- **Responsibilities:**
+  - Receive image uploads via REST API
+  - Image preprocessing with OpenCV
+  - OCR processing with Tesseract
+  - Consumption and cost calculations
+  - Data storage and retrieval
+  - API response formatting
+
+**3. OCR Processing Module**
+- **Technology:** Tesseract OCR engine
+- **Configuration:** Digit-only whitelist (0-9)
+- **Responsibilities:**
+  - Extract numeric values from images
+  - Return confidence scores
+  - Handle various meter display formats
+
+**4. Image Processing Module**
+- **Technology:** OpenCV library
+- **Responsibilities:**
+  - Image preprocessing (grayscale, noise reduction, contrast)
+  - Image enhancement for OCR optimization
+  - Rotation and perspective correction (if needed)
+
+### Data Models
+
+**Meter Reading:**
+```
+{
+  id: string (UUID)
+  utility_type: enum (gas, water, electricity)
+  reading_value: number (recognized digits)
+  previous_reading: number (optional)
+  consumption: number (calculated)
+  tariff: number (per unit)
+  cost: number (calculated)
+  photo_url: string (path to stored image)
+  timestamp: datetime
+  confidence_score: number (OCR confidence, 0-100)
+}
+```
+
+**User/Property:**
+```
+{
+  id: string (UUID)
+  property_address: string (optional for MVP)
+  tariffs: {
+    gas: number
+    water: number
+    electricity: number
+  }
+}
+```
+
+### APIs and Integrations
+
+**REST API Endpoints:**
+
+1. **POST /api/upload-image**
+   - **Request:** Multipart form data with image file and utility_type
+   - **Response:** 
+     ```json
+     {
+       "reading_value": 12345,
+       "consumption": 50,
+       "cost": 125.00,
+       "confidence_score": 95,
+       "previous_reading": 12295
+     }
+     ```
+   - **Error Responses:** 400 (invalid image), 500 (processing error)
+
+2. **GET /api/previous-reading**
+   - **Request:** Query params: utility_type
+   - **Response:**
+     ```json
+     {
+       "previous_reading": 12295,
+       "timestamp": "2024-01-15T10:30:00Z"
+     }
+     ```
+
+3. **POST /api/save-reading**
+   - **Request:** JSON with meter reading data
+   - **Response:** Success confirmation with saved reading ID
+
+### Infrastructure Requirements
+
+**Development Environment:**
+- Flutter SDK (latest stable)
+- Python 3.8+
+- Tesseract OCR installed on development machine
+- OpenCV Python library
+- Flask/FastAPI framework
+
+**Deployment:**
+- **Client:** App stores (Google Play, Apple App Store)
+- **Server:** Cloud hosting (AWS, Google Cloud, or similar)
+  - Python runtime environment
+  - Tesseract OCR installed on server
+  - Image storage (local filesystem or cloud storage)
+  - Database for readings storage (SQLite for MVP, PostgreSQL for production)
+
+**Project Structure:**
+```
+project-root/
+├── client/              # Flutter mobile app
+│   ├── lib/
+│   │   ├── models/
+│   │   ├── services/
+│   │   ├── screens/
+│   │   └── main.dart
+│   ├── assets/
+│   └── pubspec.yaml
+└── server/              # Python backend
+    ├── app/
+    │   ├── api/
+    │   ├── ocr/
+    │   ├── processing/
+    │   └── models/
+    ├── requirements.txt
+    └── main.py
+```
+
+***
+
+## Development Roadmap
+
+### Phase 1: MVP Foundation - Basic UI and Camera
+**Scope:**
+- Set up Flutter project structure
+- Create basic navigation and home screen
+- Implement camera interface with photo capture
+- Add utility type selection (gas/water/electricity)
+- Create placeholder results screen (hardcoded data)
+- Basic error handling and loading states
+
+**Deliverables:**
+- Working Flutter app that can capture photos
+- UI screens for all main flows
+- No backend integration yet
+
+**Success Criteria:**
+- User can open app, select utility type, capture photo
+- Photo is stored locally
+- Results screen displays (with mock data)
+
+### Phase 2: Backend API Foundation
+**Scope:**
+- Set up Python backend project structure
+- Implement Flask/FastAPI server with basic endpoints
+- Create image upload endpoint (receives file, stores temporarily)
+- Implement basic health check endpoint
+- Set up error handling and logging
+- Configure CORS for mobile app communication
+
+**Deliverables:**
+- Running backend server
+- API endpoint that accepts image uploads
+- Basic request/response handling
+
+**Success Criteria:**
+- Backend server starts successfully
+- Can receive image uploads via POST request
+- Returns appropriate status codes
+
+### Phase 3: OCR Integration
+**Scope:**
+- Install and configure Tesseract OCR on development environment
+- Implement image preprocessing module with OpenCV
+- Create OCR processing module with digit-only configuration
+- Integrate OCR into backend API endpoint
+- Add confidence score calculation
+- Test with sample meter images
+
+**Deliverables:**
+- Backend can process images and return recognized digits
+- OCR module with configurable settings
+- Basic preprocessing pipeline
+
+**Success Criteria:**
+- OCR recognizes digits from test images with >80% accuracy
+- Processing completes in <5 seconds
+- Confidence scores are calculated
+
+### Phase 4: Frontend-Backend Integration
+**Scope:**
+- Implement HTTP client in Flutter app
+- Connect photo capture to image upload API
+- Display OCR results from backend in Flutter UI
+- Add loading indicators during processing
+- Implement error handling for API failures
+- Add retake photo functionality
+
+**Deliverables:**
+- End-to-end flow: capture → upload → process → display
+- Error handling for network and processing failures
+- User feedback for all states
+
+**Success Criteria:**
+- User can capture photo, upload to backend, see results
+- Errors are handled gracefully
+- Loading states are clear
+
+### Phase 5: Consumption and Cost Calculation
+**Scope:**
+- Implement data storage for previous readings (server-side or client-side)
+- Create calculation logic for consumption (current - previous)
+- Implement cost calculation with configurable tariffs
+- Add tariff configuration in app or backend
+- Update API response to include calculations
+- Display consumption and cost in Flutter UI
+
+**Deliverables:**
+- Calculation engine for consumption and cost
+- Storage mechanism for previous readings
+- UI displays all calculated values
+
+**Success Criteria:**
+- Consumption calculated correctly
+- Cost calculated using correct tariffs
+- Previous readings are stored and retrieved
+
+### Phase 6: Testing and Refinement
+**Scope:**
+- Extensive testing with various meter types and photo conditions
+- Measure OCR accuracy (target: 90%+)
+- Optimize image preprocessing for better accuracy
+- Performance optimization (target: 3-5 seconds processing)
+- UI/UX refinements based on testing
+- Bug fixes and edge case handling
+
+**Deliverables:**
+- Tested application meeting acceptance criteria
+- Performance benchmarks
+- Documentation of known limitations
+
+**Success Criteria:**
+- 90%+ OCR accuracy on test set
+- Processing time <5 seconds
+- All acceptance criteria met
+
+### Future Enhancements (Post-MVP)
+
+**Phase 7: History and Data Management**
+- Reading history storage and display
+- Data export functionality
+- Multiple properties support
+- Reading trends and charts
+
+**Phase 8: Advanced OCR and Image Processing**
+- Support for poor lighting conditions
+- Multiple meter types and fonts
+- Automatic meter type detection
+- Image quality validation before upload
+
+**Phase 9: Automation and Notifications**
+- Scheduled reading reminders
+- Automatic reading detection from photos
+- Email/SMS notifications
+- Integration with billing systems
+
+**Phase 10: Multi-user and Tenant Features**
+- Tenant access for submitting readings
+- Owner-tenant communication
+- Automated billing generation
+- Payment integration
+
+***
+
+## Logical Dependency Chain
+
+### Foundation Layer (Must Build First)
+
+**1. Project Structure Setup**
+- **Why first:** Establishes development environment and code organization
+- **Dependencies:** None
+- **Deliverable:** Empty project folders (client/ and server/) with basic configuration files
+
+**2. Flutter Camera Interface**
+- **Why early:** Provides visible, working frontend that can be tested independently
+- **Dependencies:** Project structure
+- **Deliverable:** App that can capture and display photos locally
+- **Atomic scope:** Basic camera functionality only, no backend needed
+
+**3. Backend Server Setup**
+- **Why early:** Needed before any API integration
+- **Dependencies:** Project structure
+- **Deliverable:** Running server with basic endpoints
+- **Can be built in parallel with:** Flutter camera interface
+
+### Integration Layer (Build After Foundation)
+
+**4. Image Upload API**
+- **Why next:** Connects frontend to backend, enables data flow
+- **Dependencies:** Flutter camera interface, Backend server setup
+- **Deliverable:** End-to-end image transfer from app to server
+- **Atomic scope:** Just file transfer, no processing yet
+
+**5. Basic OCR Processing**
+- **Why next:** Core value proposition, but can work with mock data first
+- **Dependencies:** Backend server, Image upload API
+- **Deliverable:** Backend can return recognized digits (even if inaccurate initially)
+- **Atomic scope:** OCR only, no calculations yet
+
+### Enhancement Layer (Build After Integration)
+
+**6. Image Preprocessing**
+- **Why after OCR:** Improves existing OCR, not required for initial functionality
+- **Dependencies:** Basic OCR processing
+- **Deliverable:** Improved OCR accuracy through preprocessing
+- **Can iterate:** Start simple, add more preprocessing techniques
+
+**7. Consumption Calculation**
+- **Why after OCR:** Needs recognized values to calculate
+- **Dependencies:** OCR processing, Data storage
+- **Deliverable:** Consumption values in API response
+- **Atomic scope:** Calculation logic only, storage can be simple initially
+
+**8. Cost Calculation**
+- **Why after consumption:** Depends on consumption values
+- **Dependencies:** Consumption calculation, Tariff configuration
+- **Deliverable:** Cost values in API response and UI
+
+**9. Results Display and Retake**
+- **Why after calculations:** Needs all data to display properly
+- **Dependencies:** All calculation features, Frontend-backend integration
+- **Deliverable:** Complete user flow with error recovery
+
+### Optimization Layer (Build Last)
+
+**10. Performance Optimization**
+- **Why last:** Works with complete system to identify bottlenecks
+- **Dependencies:** All features implemented
+- **Deliverable:** Optimized processing time and accuracy
+
+**11. Error Handling and Edge Cases**
+- **Why last:** Need to understand all failure modes first
+- **Dependencies:** Complete feature set
+- **Deliverable:** Robust error handling throughout
+
+### Quick Win Strategy
+
+**Week 1 Goal:** Visible, working frontend
+- Focus on Flutter camera interface
+- Create mock results screen
+- User can see and interact with app immediately
+
+**Week 2 Goal:** Basic end-to-end flow
+- Backend receives images
+- Returns mock OCR results
+- Frontend displays results
+- **User can see complete flow working (even if OCR is mocked)**
+
+**Week 3 Goal:** Real OCR working
+- Replace mock with real OCR
+- Test and refine
+- **User can see actual digit recognition**
+
+**Week 4 Goal:** Complete MVP
+- Add calculations
+- Polish UI
+- Testing and refinement
+- **User has fully functional MVP**
+
+This approach ensures:
+- Something visible/usable appears quickly (frontend first)
+- Each feature is atomic and testable independently
+- Features build upon each other logically
+- Can demonstrate progress at each stage
+
+***
+
+## Risks and Mitigations
+
+### Technical Challenges
+
+**Risk 1: OCR Accuracy Below Target (90%)**
+- **Impact:** High - Core functionality fails if recognition is unreliable
+- **Probability:** Medium - OCR accuracy depends on image quality and meter types
+- **Mitigation:**
+  - Extensive image preprocessing with OpenCV
+  - Tesseract configuration optimization (digit whitelist, page segmentation modes)
+  - Test early and often with real meter photos
+  - Consider alternative OCR engines (EasyOCR, PaddleOCR) as backup
+  - Implement confidence thresholds - flag low-confidence results for user review
+  - Provide clear user guidance for optimal photo capture
+
+**Risk 2: Processing Time Exceeds 5 Seconds**
+- **Impact:** Medium - Poor user experience if processing is too slow
+- **Probability:** Medium - Image processing and OCR can be computationally intensive
+- **Mitigation:**
+  - Optimize image preprocessing (resize before processing, efficient algorithms)
+  - Consider image compression before upload
+  - Implement async processing with status polling if needed
+  - Use faster OCR configurations (trade accuracy for speed if necessary)
+  - Consider cloud-based OCR services for better performance
+  - Set clear expectations in UI (loading indicators, estimated time)
+
+**Risk 3: Variability in Meter Types and Fonts**
+- **Impact:** High - Different meters may not be recognized consistently
+- **Probability:** High - Real-world meters have diverse designs
+- **Mitigation:**
+  - Test with multiple meter types early in development
+  - Document supported meter types in MVP scope
+  - Implement meter type selection or detection
+  - Allow manual correction of recognized values
+  - Plan for meter type expansion in future phases
+  - Create test dataset with various meter types
+
+**Risk 4: Image Quality Issues (Poor Lighting, Blur, Angles)**
+- **Impact:** High - Low-quality images lead to OCR failures
+- **Probability:** High - Real-world photo conditions vary
+- **Mitigation:**
+  - Implement image quality validation before upload
+  - Provide user guidance for optimal photo capture
+  - Enhance preprocessing to handle common issues
+  - Set MVP scope to exclude extreme conditions (documented limitation)
+  - Add retake functionality with quality feedback
+  - Consider adding image enhancement suggestions in UI
+
+**Risk 5: Backend Infrastructure and Deployment Complexity**
+- **Impact:** Medium - Delays deployment and testing
+- **Probability:** Medium - Tesseract installation and server setup can be complex
+- **Mitigation:**
+  - Use Docker containers for consistent environment
+  - Document setup process thoroughly
+  - Test deployment early in development
+  - Consider cloud services with pre-configured OCR
+  - Start with simple local deployment, scale later
+
+### MVP Scope Definition
+
+**Risk 6: Feature Creep - Adding Too Much to MVP**
+- **Impact:** High - Delays launch, increases complexity
+- **Probability:** Medium - Temptation to add "nice-to-have" features
+- **Mitigation:**
+  - Strictly define MVP scope (photo capture, OCR, calculation, display)
+  - Document excluded features clearly (history, export, payments)
+  - Create separate "Future Enhancements" roadmap
+  - Regular scope reviews during development
+  - Focus on core value: OCR accuracy validation
+
+**Risk 7: MVP Too Limited - Not Useful Enough**
+- **Impact:** High - Users won't adopt if it doesn't solve their problem
+- **Probability:** Low - Core features address main use case
+- **Mitigation:**
+  - Validate MVP scope with potential users early
+  - Ensure core flow (capture → recognize → calculate) works perfectly
+  - Prioritize accuracy and reliability over features
+  - Plan quick iteration after MVP launch
+
+### Resource Constraints
+
+**Risk 8: Limited Testing Data (Meter Photos)**
+- **Impact:** Medium - Can't validate OCR accuracy properly
+- **Probability:** Medium - May not have access to diverse meter types
+- **Mitigation:**
+  - Collect test images early in project
+  - Use publicly available meter images for initial testing
+  - Partner with property owners for test data
+  - Create synthetic test images if needed
+  - Document test dataset composition
+
+**Risk 9: Development Time Underestimation**
+- **Impact:** Medium - Project delays
+- **Probability:** Medium - OCR integration can have unexpected challenges
+- **Mitigation:**
+  - Break down tasks into small, estimable chunks
+  - Build in buffer time for testing and refinement
+  - Prioritize core features, defer enhancements
+  - Regular progress reviews and scope adjustments
+  - Focus on working MVP, not perfection
+
+**Risk 10: Cross-Platform Compatibility Issues**
+- **Impact:** Low-Medium - Flutter should handle this, but camera APIs can differ
+- **Probability:** Low - Flutter provides good cross-platform support
+- **Mitigation:**
+  - Test on both Android and iOS early
+  - Use well-maintained Flutter camera packages
+  - Test on multiple device types and OS versions
+  - Document platform-specific limitations
+
+### Data and Privacy
+
+**Risk 11: Data Storage and Privacy Concerns**
+- **Impact:** Medium - Legal and user trust issues
+- **Probability:** Low for MVP (minimal data), Higher for future phases
+- **Mitigation:**
+  - Store minimal data in MVP (readings only, no personal info)
+  - Implement secure image storage (delete after processing if not needed)
+  - Plan for data encryption in future phases
+  - Document data handling practices
+  - Consider local storage option for sensitive data
+
+### Success Metrics and Validation
+
+**Risk 12: Unclear Success Criteria**
+- **Impact:** Medium - Can't determine if MVP is successful
+- **Probability:** Low - Acceptance criteria are defined
+- **Mitigation:**
+  - Define measurable success metrics (90% accuracy, <5s processing)
+  - Create test plan with specific test cases
+  - Regular validation against acceptance criteria
+  - User testing with real scenarios
+  - Document any deviations from targets
+
+***
+
+## Appendix
+
+### Research Findings
+
+**OCR Technology Comparison:**
+- **Tesseract OCR:** Open-source, well-documented, good for digit recognition when configured properly
+- **EasyOCR:** Alternative option, may have better accuracy for some use cases
+- **Cloud OCR Services:** Google Vision API, AWS Textract - higher accuracy but cost and dependency concerns
+
+**Image Preprocessing Techniques:**
+- Grayscale conversion improves OCR accuracy
+- Noise reduction helps with low-quality photos
+- Contrast enhancement makes digits more distinct
+- Rotation correction handles angled photos
+- Region of Interest (ROI) extraction can focus on digit area
+
+**Flutter Camera Packages:**
+- `camera` package: Official Flutter camera plugin
+- `image_picker`: Simpler alternative for basic photo capture
+- Consider `camera` for more control over capture process
+
+**Backend Framework Comparison:**
+- **Flask:** Simpler, more flexible, good for MVP
+- **FastAPI:** Modern, automatic API documentation, better performance
+- Recommendation: FastAPI for better developer experience and performance
+
+### Technical Specifications
+
+**Minimum System Requirements:**
+
+**Mobile App:**
+- iOS: iOS 12.0 or later
+- Android: Android 5.0 (API level 21) or later
+- Camera: Device must have rear-facing camera
+- Storage: Minimal (photos stored temporarily)
+
+**Backend Server:**
+- Python: 3.8 or later
+- RAM: Minimum 2GB (4GB recommended for OCR processing)
+- Storage: Sufficient for temporary image storage
+- Tesseract OCR: Version 4.0 or later
+- OpenCV: Version 4.0 or later
+
+**API Specifications:**
+- Protocol: HTTP/HTTPS
+- Data Format: JSON for responses, Multipart/form-data for image uploads
+- Authentication: None for MVP (consider for future phases)
+- Rate Limiting: Not required for MVP (consider for production)
+
+**Acceptance Criteria Details:**
+
+1. **OCR Accuracy (90%+):**
+   - Test with minimum 50 diverse meter images
+   - Calculate accuracy as: (correctly recognized digits / total digits) × 100
+   - Test across all three utility types
+   - Document accuracy per utility type
+
+2. **Processing Time (3-5 seconds):**
+   - Measure from image upload completion to response receipt
+   - Test on standard server configuration
+   - Include network latency in measurement
+   - Target: 90th percentile under 5 seconds
+
+3. **User Flow Success:**
+   - User can complete full flow without errors
+   - All UI elements are functional
+   - Error messages are clear and actionable
+   - Retake functionality works correctly
+
+**Known Limitations (MVP Scope):**
+- No support for extremely poor lighting conditions
+- No support for severely damaged or obscured meters
+- No automatic meter type detection (user must select)
+- No reading history beyond current and previous
+- No data export functionality
+- No multi-property support
+- No user authentication
+- No offline mode (requires internet connection)
+
+**Future Technical Considerations:**
+- Machine learning model for meter type classification
+- Advanced image enhancement using deep learning
+- Offline OCR capability (on-device processing)
+- Real-time camera preview with digit detection overlay
+- Batch processing for multiple meters
+- Integration with utility company APIs (if available)
