@@ -1,0 +1,26 @@
+# FastAPI and server dependencies
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
+
+# Image processing
+opencv-python==4.10.0.84
+Pillow==11.0.0
+
+# OCR
+pytesseract==0.3.13
+easyocr==1.7.1
+paddlepaddle==3.0.0
+paddleocr==2.10.0
+certifi==2025.11.12
+# Note: paddleocr requires opencv-contrib-python, but we use opencv-python to avoid conflicts with ultralytics
+# This works fine for most use cases
+
+# Object Detection for meter frame detection
+ultralytics==8.3.0
+
+# Database
+sqlalchemy==2.0.36
+
+# CORS is handled by FastAPI middleware (no separate package needed)
+

@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Product Name:** Utility Meter Reading with OCR
+**Product Name:** Utility Meter Reading with OCR  
 
 **Problem Statement:** Apartment owners who rent out their properties face the challenge of accurately tracking utility meter readings (gas, water, electricity) to calculate costs for tenants. Manual reading and calculation processes are time-consuming, error-prone, and require physical access to meters.
 
